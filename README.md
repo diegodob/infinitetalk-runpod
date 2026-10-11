@@ -78,6 +78,13 @@ Two command-line traps that are **not** patches, keep them in mind:
 Also: never let `pip` upgrade `transformers` (it goes to 5.x and the diffusers import
 breaks) and keep `numpy<2`. Both are pinned in `constraints.txt`.
 
+**`import wan` can't be verified at image build time.** `wan/modules/t5.py` calls
+`torch.cuda.current_device()` while being imported, and the Docker builder has no GPU:
+it dies with `RuntimeError: Found no NVIDIA driver on your system`. The build therefore
+checks only what is verifiable without a GPU — the patches apply, the patched files
+compile, and the xfuser stub answers both `from ... import name` and `from ... import *` —
+and the full import is verified on the pod as soon as it starts.
+
 ## Building it yourself
 
 Push to `main` and the GitHub Action builds and publishes the image to ghcr.io.

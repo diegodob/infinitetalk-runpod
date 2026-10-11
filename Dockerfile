@@ -39,10 +39,19 @@ RUN git clone https://github.com/MeiGen-AI/InfiniteTalk.git /opt/italk \
  && cd /opt/italk && git checkout 50aa0a94184315407a991ae804d9b58d6d311ba8
 
 COPY patches/ /opt/patches/
+# Chequeos que SI se pueden hacer en el build (sin placa de video):
+#  - los parches se aplican
+#  - los archivos parcheados compilan (atrapa errores de sintaxis)
+#  - el stub de xfuser responde
+# NO se puede hacer "import wan" aca: wan/modules/t5.py llama a torch.cuda.current_device()
+# al importarse, y el constructor de Docker no tiene GPU -> "Found no NVIDIA driver".
+# Esa verificacion se hace al arrancar el pod (justo despues, con placa).
 RUN python3 /opt/patches/apply_patches.py /opt/italk \
  && cd /opt/italk \
- && python3 -m py_compile wan/modules/attention.py \
- && python3 -c "import wan; print('InfiniteTalk importable')"
+ && python3 -m py_compile wan/multitalk.py wan/modules/attention.py wan/modules/t5.py \
+      wan/utils/multitalk_utils.py generate_infinitetalk.py \
+ && python3 -c "import xfuser.core.distributed as d; assert d.get_world_size() == 1; assert d.get_rank() == 0; print('stub de xfuser ok')" \
+ && python3 -c "exec('from xfuser.core.distributed import *'); print('import * del stub ok')"
 
 WORKDIR /opt/italk
 CMD ["bash"]
