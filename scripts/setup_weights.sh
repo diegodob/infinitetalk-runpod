@@ -6,6 +6,11 @@
 # Tarda unos 5 minutos con buena conexion (aria2c baja en paralelo).
 set -euo pipefail
 
+# Por SSH la sesion NO hereda el ENV de la imagen: sin esto, `hf` y `python3` no
+# existen (o resuelven al python del sistema, sin las dependencias).
+export PATH=/opt/venv/bin:$PATH
+command -v hf >/dev/null || { echo "FALTA el CLI hf (venv /opt/venv)"; exit 1; }
+
 W="${1:-/workspace/weights}"
 WAN="$W/Wan2.1-I2V-14B-480P"
 ITA="$W/InfiniteTalk"
