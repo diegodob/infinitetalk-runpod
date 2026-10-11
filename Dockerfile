@@ -40,7 +40,8 @@ RUN git clone https://github.com/MeiGen-AI/InfiniteTalk.git /opt/italk \
 
 COPY patches/ /opt/patches/
 RUN python3 /opt/patches/apply_patches.py /opt/italk \
- && python3 -m py_compile /opt/italk/wan/modules/attention.py \
+ && cd /opt/italk \
+ && python3 -m py_compile wan/modules/attention.py \
  && python3 -c "import wan; print('InfiniteTalk importable')"
 
 WORKDIR /opt/italk
