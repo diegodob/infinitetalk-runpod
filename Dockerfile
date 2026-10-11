@@ -14,10 +14,16 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HF_HOME=/workspace/hf \
     HF_HUB_ENABLE_HF_TRANSFER=0 \
     PATH=/opt/venv/bin:$PATH \
-    CUDAHOSTCXX=/usr/bin/g++-12
+    CUDAHOSTCXX=/usr/bin/g++-12 \
+    MAX_JOBS=1
 
+# g++-12 NO existe en Ubuntu 24.04 (trae el 13, que se cae con un error interno del compilador
+# al construir algunos kernels CUDA): se instala del repositorio oficial de toolchains.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git aria2 ninja-build ffmpeg rsync ca-certificates g++-12 gcc-12 \
+        git aria2 ninja-build ffmpeg rsync ca-certificates software-properties-common \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends g++-12 gcc-12 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY constraints.txt /tmp/constraints.txt
@@ -31,7 +37,7 @@ RUN python3 -m venv --system-site-packages /opt/venv \
         soundfile librosa imageio imageio-ffmpeg einops decord pyloudnorm \
         sentencepiece ftfy "protobuf==7.36.2" "huggingface_hub[cli]" \
         easydict regex tqdm safetensors scipy modelscope dashscope tokenizers \
-        opencv-python-headless "optimum-quanto==0.2.6" scenedetect \
+        opencv-python-headless "optimum-quanto==0.2.7" scenedetect \
         "moviepy==1.0.3" scikit-image loguru av ninja \
  && pip install --no-cache-dir -q --no-deps "xformers==0.0.32.post1"
 
@@ -55,12 +61,11 @@ RUN python3 /opt/patches/apply_patches.py /opt/italk \
  && python3 -c "exec('from xfuser.core.distributed import *'); print('import * del stub ok')"
 
 COPY scripts/prebuild_quanto.py /opt/scripts/prebuild_quanto.py
-# Los nucleos CUDA de optimum-quanto se compilan por adelantado, para las placas comunes
-# (A100 = 8.0, A4000/3090 = 8.6, 4090/L40S = 8.9). OJO: la base trae gcc 13, que se cae con
-# un error interno compilando marlin_cuda.cpp; por eso se instala g++-12 y nvcc lo toma de
-# CUDAHOSTCXX. Si aun asi falla, no rompe la imagen: el pod los compila la primera vez.
-RUN TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9" /opt/venv/bin/python /opt/scripts/prebuild_quanto.py \
- || echo "quanto: no se pudo precompilar, se hara en el pod"
+# OJO: probamos precompilar los nucleos CUDA de optimum-quanto aca y NO sirve: con la version
+# >=0.2.7 el camino fp8 corre sin compilar nada (verificado 11/10/2026: el render arranco y no
+# habia ni un solo archivo en ~/.cache/torch_extensions). Antes, con 0.2.6, el intento de
+# compilacion se comia la RAM del host y mataba el contenedor.
+# Se deja el script por si alguna version futura vuelve a pedirlo, pero no se ejecuta.
 
 WORKDIR /opt/italk
 
