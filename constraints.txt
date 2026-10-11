@@ -1,0 +1,8 @@
+# Versiones fijas: sin esto, pip sube transformers a la 5.x y el modelo no importa.
+numpy<2
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
+transformers==4.51.3
+diffusers==0.31.0
+protobuf==7.36.2

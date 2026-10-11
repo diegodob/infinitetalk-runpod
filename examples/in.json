@@ -1,0 +1,7 @@
+{
+  "prompt": "A cute fluffy kitten sings happily, mouth opening and closing with the music, bright eyes, cinematic close-up, soft studio lighting, high detail",
+  "cond_video": "/workspace/foto.png",
+  "cond_audio": {
+    "person1": "/workspace/audio.wav"
+  }
+}

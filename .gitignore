@@ -1,0 +1,10 @@
+# Pesos y salidas (van fuera del repo)
+weights/
+*.safetensors
+*.pth
+*.mp4
+*.wav
+*.mp3
+hf/
+__pycache__/
+*.pyc
