@@ -13,10 +13,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     HF_HOME=/workspace/hf \
     HF_HUB_ENABLE_HF_TRANSFER=0 \
-    PATH=/opt/venv/bin:$PATH
+    PATH=/opt/venv/bin:$PATH \
+    CUDAHOSTCXX=/usr/bin/g++-12
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git aria2 ninja-build ffmpeg rsync ca-certificates \
+        git aria2 ninja-build ffmpeg rsync ca-certificates g++-12 gcc-12 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY constraints.txt /tmp/constraints.txt
@@ -52,6 +53,14 @@ RUN python3 /opt/patches/apply_patches.py /opt/italk \
       wan/utils/multitalk_utils.py generate_infinitetalk.py \
  && python3 -c "import xfuser.core.distributed as d; assert d.get_world_size() == 1; assert d.get_rank() == 0; print('stub de xfuser ok')" \
  && python3 -c "exec('from xfuser.core.distributed import *'); print('import * del stub ok')"
+
+COPY scripts/prebuild_quanto.py /opt/scripts/prebuild_quanto.py
+# Los nucleos CUDA de optimum-quanto se compilan por adelantado, para las placas comunes
+# (A100 = 8.0, A4000/3090 = 8.6, 4090/L40S = 8.9). OJO: la base trae gcc 13, que se cae con
+# un error interno compilando marlin_cuda.cpp; por eso se instala g++-12 y nvcc lo toma de
+# CUDAHOSTCXX. Si aun asi falla, no rompe la imagen: el pod los compila la primera vez.
+RUN TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9" /opt/venv/bin/python /opt/scripts/prebuild_quanto.py \
+ || echo "quanto: no se pudo precompilar, se hara en el pod"
 
 WORKDIR /opt/italk
 
