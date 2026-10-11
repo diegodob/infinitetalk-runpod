@@ -54,4 +54,7 @@ RUN python3 /opt/patches/apply_patches.py /opt/italk \
  && python3 -c "exec('from xfuser.core.distributed import *'); print('import * del stub ok')"
 
 WORKDIR /opt/italk
-CMD ["bash"]
+
+# OJO: no definir CMD aca. Las imagenes de RunPod arrancan sshd y Jupyter desde su
+# propio CMD; si se reemplaza (por ejemplo con ["bash"]) el pod queda encendido pero
+# inaccesible: "Connection refused" en el puerto 22. Se hereda el CMD de la base.

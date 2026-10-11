@@ -85,6 +85,11 @@ checks only what is verifiable without a GPU — the patches apply, the patched 
 compile, and the xfuser stub answers both `from ... import name` and `from ... import *` —
 and the full import is verified on the pod as soon as it starts.
 
+**Never override `CMD` in the Dockerfile.** The RunPod base images start `sshd` (and
+Jupyter) from their own `CMD`. Replacing it — for instance `CMD ["bash"]` — leaves the pod
+`RUNNING` but unreachable: `ssh: connect to host ... port 22: Connection refused`, with no
+web terminal either. Inherit the base image's `CMD`.
+
 ## Building it yourself
 
 Push to `main` and the GitHub Action builds and publishes the image to ghcr.io.
