@@ -84,12 +84,13 @@ edit(
 #    El codigo llama a flash_attention() de forma directa, asi que se redefine al final
 #    del modulo para que los demas modulos importen esta version.
 p = pathlib.Path(f"{repo}/wan/modules/attention.py")
-s = p.read_text()
 marca = "def flash_attention(q, k, v, q_lens=None, k_lens=None, dropout_p=0., softmax_scale=None,"
-if marca in s:
+if not p.exists():
+    print(f"[!!] flash-attn: no existe {p}")
+elif marca in p.read_text():
     print("[ok] flash-attn (atencion nativa): ya estaba")
 else:
-    p.write_text(s.rstrip() + '''
+    p.write_text(p.read_text().rstrip() + '''
 
 
 # Fallback: sin la libreria flash-attn, usamos la atencion nativa de PyTorch.
@@ -113,32 +114,43 @@ sp = subprocess.run(
 base = pathlib.Path(sp) / "xfuser"
 (base / "core").mkdir(parents=True, exist_ok=True)
 (base / "__init__.py").write_text("__version__ = '0.0.0-stub'\n")
-(base / "core" / "__init__.py").write_text("from .distributed import *  # noqa: F401,F403\n")
-(base / "core" / "distributed.py").write_text('''"""Stub de xfuser: con una sola GPU no hay nada que repartir."""
+# El __init__ tiene que quedar VACIO: un "from .distributed import *" aca dispara
+# la iteracion de __all__, y con el __getattr__ del stub eso rompe el import.
+(base / "core" / "__init__.py").write_text(
+    "# Vacio a proposito: el stub vive en distributed.py.\n"
+)
+(base / "core" / "distributed.py").write_text('''"""Stub de xfuser: con una sola placa no hay nada que repartir.
+
+InfiniteTalk importa estas funciones para el modo multi-GPU.
+Aca devolvemos los valores de una sola GPU: rango 0, tamano de grupo 1, sin grupo.
+"""
 
 rank = 0
 world_size = 1
 _local_rank = 0
 
 
-def get_rank(*a, **k):
-    return 0
-
-
-def get_world_size(*a, **k):
-    return 1
-
-
-def get_local_rank(*a, **k):
-    return 0
-
-
-def init_distributed_environment(*a, **k):
-    return None
-
-
 def __getattr__(name):
-    return None
+    # OJO: los nombres internos de Python tienen que fallar con AttributeError.
+    # Si devolvemos None para "__all__", 'from ... import *' intenta iterar None
+    # y muere con "TypeError: 'NoneType' object is not iterable".
+    if name.startswith("__"):
+        raise AttributeError(name)
+    if "rank" in name:
+        return lambda *a, **k: 0
+    if "world_size" in name or "degree" in name:
+        return lambda *a, **k: 1
+    return lambda *a, **k: None
+''')
+(base / "core" / "long_ctx_attention.py").write_text('''"""Stub de xfuser: la atencion de contexto largo solo se usa con multi-GPU."""
+
+
+class xFUserLongContextAttention:
+    def __init__(self, *a, **k):
+        raise RuntimeError(
+            "El stub de xfuser no implementa xFUserLongContextAttention: "
+            "la libreria real solo hace falta para repartir en varias placas."
+        )
 ''')
 print("[ok] stub de xfuser listo")
 print("PARCHES_OK")
