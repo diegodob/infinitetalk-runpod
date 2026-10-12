@@ -26,7 +26,13 @@ BI="https://huggingface.co/MeiGen-AI/InfiniteTalk/resolve/main"
 bajar() {  # url destino
   if [ -s "$2" ]; then echo "-- ya esta: $(basename "$2")"; return 0; fi
   echo "-- bajando $(basename "$2")"
-  aria2c -q -c -x 8 -s 8 -k 1M -d "$(dirname "$2")" -o "$(basename "$2")" "$1"
+  aria2c -q -c -x 16 -s 16 -k 1M -d "$(dirname "$2")" -o "$(basename "$2")" "$1" \
+    || aria2c -q -c -x 8 -s 8 -k 1M -d "$(dirname "$2")" -o "$(basename "$2")" "$1"
+}
+
+# Descarga con el bajador rapido de HuggingFace (multi-conexion) y, si falla, con el normal.
+hf_bajar() {  # args: los mismos de hf download
+  HF_HUB_ENABLE_HF_TRANSFER=1 hf download "$@" || hf download "$@"
 }
 
 echo "=== Pesos base de Wan 2.1 (VAE + T5 + CLIP)"
@@ -43,11 +49,11 @@ bajar "$BI/quant_models/infinitetalk_single_fp8.json" "$QW/infinitetalk_single_f
 bajar "$BI/quant_models/quant.json" "$QW/quant.json"
 
 echo "=== Configuracion y tokenizadores"
-hf download Wan-AI/Wan2.1-I2V-14B-480P --local-dir "$WAN" --include "google/umt5-xxl/*" "config.json" "*.index.json"
-hf download FacebookAI/xlm-roberta-large --local-dir "$WAN/xlm-roberta-large" --include "tokenizer*" "special_tokens_map.json" "sentencepiece.bpe.model" "config.json"
+hf_bajar Wan-AI/Wan2.1-I2V-14B-480P --local-dir "$WAN" --include "google/umt5-xxl/*" "config.json" "*.index.json"
+hf_bajar FacebookAI/xlm-roberta-large --local-dir "$WAN/xlm-roberta-large" --include "tokenizer*" "special_tokens_map.json" "sentencepiece.bpe.model" "config.json"
 
 echo "=== Codificador de audio (chino-wav2vec2, revision pr/1)"
-hf download TencentGameMate/chinese-wav2vec2-base --revision refs/pr/1 --local-dir "$W2V"
+hf_bajar TencentGameMate/chinese-wav2vec2-base --revision refs/pr/1 --local-dir "$W2V"
 
 # El codigo busca el T5 en la carpeta padre de quant_models: dejamos el enlace.
 ln -sf quant_models/t5_fp8.safetensors "$ITA/t5_fp8.safetensors"

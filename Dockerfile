@@ -38,7 +38,7 @@ RUN python3 -m venv --system-site-packages /opt/venv \
         sentencepiece ftfy "protobuf==7.36.2" "huggingface_hub[cli]" \
         easydict regex tqdm safetensors scipy modelscope dashscope tokenizers \
         opencv-python-headless "optimum-quanto==0.2.7" scenedetect \
-        "moviepy==1.0.3" scikit-image loguru av ninja \
+        "moviepy==1.0.3" scikit-image loguru av ninja hf_transfer \
  && pip install --no-cache-dir -q --no-deps "xformers==0.0.32.post1"
 
 # El repositorio, en el commit exacto con el que se probo todo esto.
